@@ -22,6 +22,11 @@ from flask_cors import CORS
 app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
 
+@app.after_request
+def add_headers(response):
+    response.headers['ngrok-skip-browser-warning'] = 'true'
+    return response
+
 # -------------------------------------------------------------
 # Configuration & Paths
 # -------------------------------------------------------------

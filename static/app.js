@@ -2,6 +2,18 @@
 // Celebrare Face Reco & Scoring Local Tester — Application Logic
 // ==========================================================================
 
+// Global fetch wrapper for seamless tunneling (ngrok / devtunnels)
+const _origFetch = window.fetch;
+window.fetch = function (url, options = {}) {
+  options.headers = options.headers || {};
+  if (options.headers instanceof Headers) {
+    options.headers.set('ngrok-skip-browser-warning', 'true');
+  } else {
+    options.headers['ngrok-skip-browser-warning'] = 'true';
+  }
+  return _origFetch(url, options);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const videoFeed = document.getElementById('videoFeed');
