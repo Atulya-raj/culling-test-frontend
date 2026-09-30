@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Celebrare AI — Face Reco, Scoring & Culling Verifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="logo-badge">AI</div>
+      <div class="brand-text">
+        <h1>Celebrare <span class="accent-text">FaceReco</span></h1>
+        <span class="sub-badge">FACE RECOGNITION, CLUSTERING & CULLING VERIFIER</span>
+      </div>
+    </div>
+    <div class="nav-stats" id="navStats">
+      <div class="stat-item">
+        <span class="stat-label">Clusters</span>
+        <span class="stat-val" id="statClusters">...</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-label">Dataset Images</span>
+        <span class="stat-val" id="statImages">...</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-badge live">● System Ready</div>
+    </div>
+  </header>
+
+  <!-- Main Split Container -->
+  <main class="main-layout">
+    <!-- Left Panel: Scanner & Controls -->
+    <section class="scanner-panel">
+      <div class="card scanner-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">📷</span>
+            <h2>Face Scanner</h2>
+          </div>
+          <span class="status-pill" id="cameraStatus">Camera Idle</span>
+        </div>
+
+        <!-- Camera Viewport -->
+        <div class="viewport-wrapper">
+          <video id="videoFeed" autoplay playsinline muted></video>
+          <canvas id="captureCanvas" style="display: none;"></canvas>
+          
+          <!-- Biometric Face Reticle Overlay -->
+          <div class="reticle-overlay" id="reticleOverlay">
+            <div class="reticle-box">
+              <div class="corner tl"></div>
+              <div class="corner tr"></div>
+              <div class="corner bl"></div>
+              <div class="corner br"></div>
+              <div class="scan-laser" id="scanLaser"></div>
+              <div class="face-guide-oval"></div>
+            </div>
+            <p class="guide-text" id="guideText">Position your face inside the oval</p>
+          </div>
+
+          <!-- Upload Dropzone Overlay (when toggled) -->
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-content">
+              <span class="dropzone-icon">📁</span>
+              <p>Drag & drop face photo here</p>
+              <span>or click to browse from device</span>
+              <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Scanner Controls -->
+        <div class="scanner-actions">
+          <button id="btnScan" class="btn btn-primary btn-scan">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-text">SCAN & GET MY IMAGES</span>
+          </button>
+
+          <div class="secondary-actions">
+            <button id="btnToggleCamera" class="btn btn-secondary">
+              <span class="btn-icon">🎥</span> <span id="cameraBtnText">Start Camera</span>
+            </button>
+            <button id="btnUploadToggle" class="btn btn-secondary">
+              <span class="btn-icon">📂</span> <span>Upload Photo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Diagnostic / Aligned Face Preview -->
+        <div class="diagnostic-box" id="diagnosticBox" style="display: none;">
+          <div class="diagnostic-header">
+            <span>Biometric Extraction Diagnostics</span>
+            <span class="badge" id="confidenceBadge">High Confidence</span>
+          </div>
+          <div class="diagnostic-body">
+            <img id="alignedChipImg" alt="Aligned Face Chip" class="aligned-chip" />
+            <div class="diagnostic-details">
+              <div class="detail-row">
+                <span class="lbl">Matched Cluster:</span>
+                <span class="val accent" id="diagClusterId">#--</span>
+              </div>
+              <div class="detail-row">
+                <span class="lbl">Cosine Similarity:</span>
+                <span class="val" id="diagSim">--</span>
+              </div>
+              <div class="detail-row">
+                <span class="lbl">Photos in Cluster:</span>
+                <span class="val" id="diagCount">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Cluster Browser (for instant testing without camera) -->
+        <div class="quick-browser">
+          <label for="clusterSelect">⚡ Quick Test: Select Any Cluster Directly</label>
+          <div class="select-row">
+            <select id="clusterSelect">
+              <option value="">-- Choose a person cluster --</option>
+            </select>
+            <button id="btnLoadCluster" class="btn btn-outline">Load</button>
+            <button id="btnReloadDb" class="btn btn-outline" title="Reload Database from disk">↻ Reload DB</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Results & Score-Sorted Gallery -->
+    <section class="results-panel">
+      <!-- Welcome / Empty State -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">✨</div>
+        <h3>Ready to Explore</h3>
+        <p>Scan your face, select a person cluster from the dropdown, or click below for an instant demo on the 504-image dataset.</p>
+        <div style="margin: 16px 0 20px 0;">
+          <button id="btnQuickDemo" class="btn btn-primary" style="padding: 10px 22px; font-size: 0.95rem; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);">
+            ⚡ Quick Demo: Explore Cluster #1 (218 Photos)
+          </button>
+        </div>
+        <div class="feature-pills">
+          <span>👑 Best Scores First</span>
+          <span>🎯 ArcFace Vector Matching</span>
+          <span>🏷️ Culling & Burst Filtering</span>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-state" id="loadingState" style="display: none;">
+        <div class="spinner-ring"></div>
+        <h4>Extracting Biometrics & Matching...</h4>
+        <p>Running MTCNN 5-point alignment + ResNet-50 512-D embedding projection</p>
+      </div>
+
+      <!-- Results Content -->
+      <div class="results-content" id="resultsContent" style="display: none;">
+        <!-- Match Summary Banner -->
+        <div class="match-summary card">
+          <div class="summary-info">
+            <div class="person-tag">
+              <span class="tag-label">Matched Person</span>
+              <h2 id="summaryClusterTitle">Cluster #--</h2>
+            </div>
+            <div class="stat-metric">
+              <span class="metric-label">Embedding Similarity</span>
+              <span class="metric-val" id="summarySim">--%</span>
+            </div>
+            <div class="stat-metric">
+              <span class="metric-label">Total Photos</span>
+              <span class="metric-val" id="summaryPhotoCount">--</span>
+            </div>
+            <div class="stat-metric">
+              <span class="metric-label">Top Face Score</span>
+              <span class="metric-val highlight" id="summaryTopScore">--</span>
+            </div>
+          </div>
+
+          <!-- Culling Tag Filter Bar -->
+          <div class="filter-bar">
+            <span class="filter-label">Filter Tag:</span>
+            <div class="filter-chips" id="filterChips">
+              <button class="chip active" data-tag="ALL">All Photos (<span id="countAll">0</span>)</button>
+              <button class="chip" data-tag="BEST_IN_SCENE">👑 Best in Scene (<span id="countBest">0</span>)</button>
+              <button class="chip" data-tag="HERO">⭐ Hero (<span id="countHero">0</span>)</button>
+              <button class="chip" data-tag="CANDID">📸 Candid (<span id="countCandid">0</span>)</button>
+              <button class="chip" data-tag="BURST_DUPLICATE">📑 Burst Duplicate (<span id="countBurst">0</span>)</button>
+              <button class="chip" data-tag="REJECT_BLUR">🌫️ Blur (<span id="countBlur">0</span>)</button>
+              <button class="chip" data-tag="REJECT_BLINK">👁️ Blink (<span id="countBlink">0</span>)</button>
+            </div>
+            <div class="active-tag-info" id="activeTagInfo">
+              <span class="info-icon">ℹ️</span>
+              <span id="activeTagDesc">All Photos: Showing all images for this person cluster sorted strictly by quality score descending.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sorting Info Notice -->
+        <div class="sorting-notice">
+          <span>⚡ Results are strictly sorted in <strong>Descending Face Score order</strong> (Best quality, expression & prominence first).</span>
+        </div>
+
+        <!-- Gallery Grid -->
+        <div class="gallery-grid" id="galleryGrid">
+          <!-- Photo cards injected dynamically by app.js -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Fullscreen Photo Modal / Lightbox -->
+  <div class="modal" id="photoModal">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-dialog">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <div class="modal-image-wrap">
+        <img id="modalImg" src="" alt="Full Photo Preview" />
+      </div>
+      <div class="modal-sidebar">
+        <div class="modal-header">
+          <span class="modal-rank" id="modalRank">#1 Best Face</span>
+          <h3 id="modalFilename">filename.jpg</h3>
+        </div>
+        <div class="modal-scores">
+          <div class="score-card">
+            <span class="score-title">Narrative Face Score</span>
+            <span class="score-number" id="modalScore">0.00000</span>
+            <div class="score-progress-bar">
+              <div class="score-progress-fill" id="modalScoreFill"></div>
+            </div>
+          </div>
+          <div class="modal-tag-wrap">
+            <span class="tag-title">Culling Classification:</span>
+            <div class="modal-tag-row">
+              <span class="modal-badge" id="modalTag">BEST_IN_SCENE</span>
+            </div>
+            <div class="modal-tag-reason-box">
+              <span class="reason-label">Tag Rationale:</span>
+              <p class="modal-tag-reason" id="modalTagReason">Top-scoring frame for this person in multi-face shots.</p>
+            </div>
+          </div>
+          <div class="modal-path-box">
+            <span class="tag-title">File System Path:</span>
+            <code id="modalPath">C:\...</code>
+          </div>
+        </div>
+        <div class="modal-nav-btns">
+          <button id="modalPrev" class="btn btn-outline">◀ Previous</button>
+          <button id="modalNext" class="btn btn-outline">Next ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
